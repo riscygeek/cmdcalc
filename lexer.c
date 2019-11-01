@@ -8,9 +8,9 @@
 static const char* textpos = NULL;
 static const char* textend = NULL;
 static const char* tokenNames[] = {
-	"unknown", "number",
+	"unknown", "number", "name",
 	"operator", "operator", "operator", "operator",
-	"parenthesis", "parenthesis",
+	"parenthesis", "parenthesis", "assignment",
 
 	"end of file",
 };
@@ -19,12 +19,14 @@ void print_token(const Token tk) {
 	printf("Token{ .type=%s, .text=\"%s\"", tokenNames[(size_t)tk.type], tk.text);
 	switch (tk.type) {
 	case TOKEN_NUMBER: printf(", .value=%d", tk.intVal); break;
+	case TOKEN_NAME: printf(", .value=%s", tk.strVal); break;
 	case TOKEN_PLUS:
 	case TOKEN_MINUS:
 	case TOKEN_STAR:
 	case TOKEN_SLASH:
 	case TOKEN_LPAREN:
 	case TOKEN_RPAREN:
+	case TOKEN_EQUAL:
 		printf(", .value='%c'", tk.intVal);
 		break;
 	}
@@ -47,6 +49,12 @@ begin:;
 		while (isdigit(*textpos)) num = num * 10 + (*textpos++ - '0');
 		return ((Token) { TOKEN_NUMBER, strrint(start, textpos), num });
 	}
+	else if (isalpha(*textpos)) {
+		const char* start = textpos;
+		while (isalnum(*++textpos));
+		const char* str = strrint(start, textpos);
+		return ((Token) { TOKEN_NAME, str, .strVal = str });
+	}
 	else if (*textpos == '+')
 		return ((Token) { TOKEN_PLUS, strnint(textpos, 1), * textpos++ });
 	else if (*textpos == '-')
@@ -59,6 +67,8 @@ begin:;
 		return ((Token) { TOKEN_LPAREN, strnint(textpos, 1), * textpos++ });
 	else if (*textpos == ')')
 		return ((Token) { TOKEN_RPAREN, strnint(textpos, 1), * textpos++ });
+	else if (*textpos == '=')
+		return ((Token) { TOKEN_EQUAL, strnint(textpos, 1), * textpos++ });
 
 	else return  ((Token) { TOKEN_UNKNOWN, strnint(textpos, 1), *textpos++ });
 }
