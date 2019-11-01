@@ -16,6 +16,7 @@ static char* readline(void) {
 }
 
 int main(int argc, char** argv) {
+	init_funcs();
 	while (1) {
 		fputs("> ", stdout);
 		char* line = readline();

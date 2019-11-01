@@ -6,6 +6,7 @@
 extern "C" {
 #endif
 
+void init_funcs(void);
 void parse(Token* tokens);
 
 #ifdef __cplusplus

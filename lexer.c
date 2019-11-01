@@ -11,6 +11,7 @@ static const char* tokenNames[] = {
 	"unknown", "number", "name",
 	"operator", "operator", "operator", "operator",
 	"parenthesis", "parenthesis", "assignment",
+	"comma",
 
 	"end of file",
 };
@@ -27,6 +28,7 @@ void print_token(const Token tk) {
 	case TOKEN_LPAREN:
 	case TOKEN_RPAREN:
 	case TOKEN_EQUAL:
+	case TOKEN_COMMA:
 		printf(", .value='%c'", tk.intVal);
 		break;
 	}
@@ -69,6 +71,8 @@ begin:;
 		return ((Token) { TOKEN_RPAREN, strnint(textpos, 1), * textpos++ });
 	else if (*textpos == '=')
 		return ((Token) { TOKEN_EQUAL, strnint(textpos, 1), * textpos++ });
+	else if (*textpos == ',')
+		return ((Token) { TOKEN_COMMA, strnint(textpos, 1), * textpos++ });
 
 	else return  ((Token) { TOKEN_UNKNOWN, strnint(textpos, 1), *textpos++ });
 }
