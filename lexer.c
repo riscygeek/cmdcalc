@@ -11,7 +11,7 @@ static const char* tokenNames[] = {
 	"unknown", "number", "name",
 	"operator", "operator", "operator", "operator",
 	"parenthesis", "parenthesis", "assignment",
-	"comma",
+	"comma", "keyword",
 
 	"end of file",
 };
@@ -20,7 +20,9 @@ void print_token(const Token tk) {
 	printf("Token{ .type=%s, .text=\"%s\"", tokenNames[(size_t)tk.type], tk.text);
 	switch (tk.type) {
 	case TOKEN_NUMBER: printf(", .value=%d", tk.intVal); break;
-	case TOKEN_NAME: printf(", .value=%s", tk.strVal); break;
+	case TOKEN_FUN:
+	case TOKEN_NAME:
+		printf(", .value=%s", tk.strVal); break;
 	case TOKEN_PLUS:
 	case TOKEN_MINUS:
 	case TOKEN_STAR:
@@ -39,6 +41,8 @@ void print_tokens(const Token* tokens) {
 	for (size_t i = 0; i < len; ++i) print_token(tokens[i]);
 }
 static Token next_token(void) {
+	static const char* keyword_fun = NULL;
+	if (!keyword_fun) keyword_fun = strint("fun");
 begin:;
 	if (textpos == textend) return ((Token) { TOKEN_EOF, "", 0 });
 	else if (isspace(*textpos)) {
@@ -55,7 +59,9 @@ begin:;
 		const char* start = textpos;
 		while (isalnum(*++textpos));
 		const char* str = strrint(start, textpos);
-		return ((Token) { TOKEN_NAME, str, .strVal = str });
+		enum TokenType type = TOKEN_NAME;
+		if (str == keyword_fun) type = TOKEN_FUN;
+		return ((Token) { type, str, .strVal = str });
 	}
 	else if (*textpos == '+')
 		return ((Token) { TOKEN_PLUS, strnint(textpos, 1), * textpos++ });
