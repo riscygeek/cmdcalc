@@ -13,3 +13,6 @@ Linux/WSL: <br>
 - User-defined functions (like <code>fun add3(a, b, c) = a + b + c</code>)
 - List all Variables with <code>vars</code>
 - List all Functions with <code>funcs</code>
+
+# How to embed cmdcalc in your project
+Just modify console.c and remove main.c to fit to your project.
