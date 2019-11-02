@@ -1,6 +1,6 @@
 #include <string.h>
-#include <stdio.h>
 #include <math.h>
+#include "console.h"
 #include "strint.h"
 #include "parser.h"
 #include "buf.h"
@@ -88,17 +88,17 @@ static void pop_frame() {
 static int call(const char* name, int params[MAX_FPARAMS], int nParams) {
 	const struct function* f = get_func(name);
 	if (!f) {
-		printf("Function %s not found!\n", name);
+		outform("Function %s not found!\n", name);
 		quite_error = 1;
 		return 0;
 	}
 	else if (nParams != f->paramcount) {
-		printf("Function %s expects %d parameters\n", name, f->paramcount);
+		outform("Function %s expects %d parameters\n", name, f->paramcount);
 		quite_error = 1;
 		return 0;
 	}
 	else if (f->paramcount < 0 || f->paramcount > MAX_FPARAMS) {
-		printf("Function %s is invalid\n", name);
+		outform("Function %s is invalid\n", name);
 		quite_error = 1;
 		return 0;
 	}
@@ -111,14 +111,14 @@ static int call(const char* name, int params[MAX_FPARAMS], int nParams) {
 			case 3: return f->callback(params[0], params[1], params[2]);
 			case 4: return f->callback(params[0], params[1], params[2], params[3]);
 			default:
-				printf("Some Error occured on calling %s!\n", name);
+				outform("Some Error occured on calling %s!\n", name);
 				quite_error = 1;
 				return 0;
 			}
 		}
 		else {
 			if (nParams != f->paramcount) {
-				printf("Function %s expects %d params!\n", name, f->paramcount);
+				outform("Function %s expects %d params!\n", name, f->paramcount);
 				quite_error = 1;
 				return 0;
 			}
@@ -141,7 +141,7 @@ static void defun(const char* name, int paramcount, size_t tokenpos, const char*
 	if (get_func(name)) {
 		struct function* f = get_func(name);
 		if (f->builtin) {
-			printf("Cannot redefine builtin function %s!\n", name);
+			outform("Cannot redefine builtin function %s!\n", name);
 			return;
 		}
 		f->paramcount = paramcount;
@@ -184,12 +184,12 @@ static int factor(void) {
 				++i;
 			}
 			if (is_token(TOKEN_COMMA)) {
-				printf("Passed more than %d arguments!\n", MAX_FPARAMS);
+				outform("Passed more than %d arguments!\n", MAX_FPARAMS);
 				quite_error = 1;
 				return 0;
 			}
 			if (!match_token(TOKEN_RPAREN)) {
-				fputs("expected ')' got ", stdout);
+				outstr("expected ')' got ");
 				print_token(tokens[tokenpos]);
 				quite_error = 1;
 				return 0;
@@ -199,7 +199,7 @@ static int factor(void) {
 		const int* value = get_var(name);
 
 		if (!value) {
-			printf("Variable %s not found!\n", name);
+			outform("Variable %s not found!\n", name);
 			quite_error = 1;
 			return 0;
 		}
@@ -209,14 +209,14 @@ static int factor(void) {
 		int a = expression();
 		if (match_token(TOKEN_RPAREN)) return a;
 		else {
-			fputs("expected ')' got ", stdout);
+			outstr("expected ')' got ");
 			print_token(tokens[tokenpos++]);
 			quite_error = 1;
 			return 0;
 		}
 	}
 	else {
-		fputs("expected number, name or '(' got ", stdout);
+		outstr("expected number, name or '(' got ");
 		print_token(tokens[tokenpos++]);
 		quite_error = 1;
 		return 0;
@@ -232,7 +232,7 @@ static int unary(void) {
 		case TOKEN_PLUS: return b;
 		case TOKEN_MINUS: return -b;
 		default:
-			fputs("expected '+' or '-' got ", stdout);
+			outstr("expected '+' or '-' got ");
 			print_token(tokens[tokenpos]);
 			quite_error = 1;
 			break;
@@ -253,7 +253,7 @@ static int term(void) {
 		case TOKEN_STAR: a *= b; break;
 		case TOKEN_SLASH: a /= b; break;
 		default:
-			fputs("expected '*' or '/' got ", stdout);
+			outstr("expected '*' or '/' got ");
 			print_token(tokens[tokenpos]);
 			quite_error = 1;
 			break;
@@ -274,7 +274,7 @@ static int expression(void) {
 		case TOKEN_PLUS: a += b; break;
 		case TOKEN_MINUS: a -= b; break;
 		default:
-			fputs("expected '+' or '-' got ", stdout);
+			outstr("expected '+' or '-' got ");
 			print_token(tokens[tokenpos]);
 			quite_error = 1;
 			break;
@@ -287,18 +287,18 @@ static void statement(void) {
 		if (strcmp(tokens[tokenpos].strVal, "funcs") == 0) {
 			const size_t funcs_len = buf_len(funcs);
 			next_token();
-			puts("Functions:");
+			outstr("Functions:\n");
 			for (size_t i = 0; i < funcs_len; ++i) {
-				puts(funcs[i].name);
+				outform("%s\n", funcs[i].name);
 			}
 		}
 		else if (strcmp(tokens[tokenpos].strVal, "vars") == 0) {
 			const struct variable* vars = buf_last(stack)->vars;
 			const size_t vars_len = buf_len(vars);
 			next_token();
-			puts("Variables:");
+			outstr("Variables:\n");
 			for (size_t i = 0; i < vars_len; ++i) {
-				puts(vars[i].name);
+				outform("%s\n", vars[i].name);
 			}
 		}
 		else if (tokens[tokenpos + 1].type == TOKEN_EQUAL) {
@@ -315,20 +315,20 @@ static void statement(void) {
 		const char* paramnames[MAX_FPARAMS] = { NULL };
 		int paramcount = 0;
 		if (!is_token(TOKEN_NAME)) {
-			fputs("expected name got ", stdout);
+			outstr("expected name got ");
 			print_token(tokens[tokenpos++]);
 			quite_error = 1;
 			return;
 		}
 		const char* name = next_token().strVal;
 		if (!match_token(TOKEN_LPAREN)) {
-			fputs("expected '(' got ", stdout);
+			outstr("expected '(' got ");
 			print_token(tokens[tokenpos++]);
 			quite_error = 1;
 		}
 		else if (match_token(TOKEN_RPAREN)) {
 			if (!match_token(TOKEN_EQUAL)) {
-				fputs("expected '=' got ", stdout);
+				outstr("expected '=' got ");
 				print_token(tokens[tokenpos++]);
 				quite_error = 1;
 			}
@@ -336,7 +336,7 @@ static void statement(void) {
 		}
 		else {
 			if (!is_token(TOKEN_NAME)) {
-				fputs("expected name got ", stdout);
+				outstr("expected name got ");
 				print_token(tokens[tokenpos++]);
 				quite_error = 1;
 				return;
@@ -345,7 +345,7 @@ static void statement(void) {
 			paramcount = 1;
 			while (paramcount < MAX_FPARAMS && match_token(TOKEN_COMMA)) {
 				if (!is_token(TOKEN_NAME)) {
-					fputs("expected name got ", stdout);
+					outstr("expected name got ");
 					print_token(tokens[tokenpos++]);
 					quite_error = 1;
 					return;
@@ -353,13 +353,13 @@ static void statement(void) {
 				paramnames[paramcount++] = next_token().strVal;
 			}
 			if (!match_token(TOKEN_RPAREN)) {
-				fputs("expected ')' got ", stdout);
+				outstr("expected ')' got ");
 				print_token(tokens[tokenpos++]);
 				quite_error = 1;
 				return;
 			}
 			if (!match_token(TOKEN_EQUAL)) {
-				fputs("expected '=' got ", stdout);
+				outstr("expected '=' got ");
 				print_token(tokens[tokenpos++]);
 				quite_error = 1;
 				return;
@@ -372,7 +372,7 @@ static void statement(void) {
 	else {
 	expr:;
 		int n = expression();
-		if (!quite_error) printf("%d\n", n);
+		if (!quite_error) outform("%d\n", n);
 	}
 }
 

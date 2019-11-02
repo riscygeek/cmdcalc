@@ -1,6 +1,6 @@
 #include <string.h>
-#include <stdio.h>
 #include <ctype.h>
+#include "console.h"
 #include "strint.h"
 #include "lexer.h"
 #include "buf.h"
@@ -17,12 +17,12 @@ static const char* tokenNames[] = {
 };
 
 void print_token(const Token tk) {
-	printf("Token{ .type=%s, .text=\"%s\"", tokenNames[(size_t)tk.type], tk.text);
+	outform("Token{ .type=%s, .text=\"%s\"", tokenNames[(size_t)tk.type], tk.text);
 	switch (tk.type) {
-	case TOKEN_NUMBER: printf(", .value=%d", tk.intVal); break;
+	case TOKEN_NUMBER: outform(", .value=%d", tk.intVal); break;
 	case TOKEN_FUN:
 	case TOKEN_NAME:
-		printf(", .value=%s", tk.strVal); break;
+		outform(", .value=%s", tk.strVal); break;
 	case TOKEN_PLUS:
 	case TOKEN_MINUS:
 	case TOKEN_STAR:
@@ -31,10 +31,10 @@ void print_token(const Token tk) {
 	case TOKEN_RPAREN:
 	case TOKEN_EQUAL:
 	case TOKEN_COMMA:
-		printf(", .value='%c'", tk.intVal);
+		outform(", .value='%c'", tk.intVal);
 		break;
 	}
-	puts(" }");
+	outstr(" }\n");
 }
 void print_tokens(const Token* tokens) {
 	const size_t len = buf_len(tokens);
