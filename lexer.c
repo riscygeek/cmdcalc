@@ -55,9 +55,9 @@ begin:;
 		while (isdigit(*textpos)) num = num * 10 + (*textpos++ - '0');
 		return ((Token) { TOKEN_NUMBER, strrint(start, textpos), num });
 	}
-	else if (isalpha(*textpos)) {
+	else if (isalpha(*textpos) || *textpos == '_') {
 		const char* start = textpos;
-		while (isalnum(*++textpos));
+		while (isalnum(*++textpos) || *textpos == '_');
 		const char* str = strrint(start, textpos);
 		enum TokenType type = TOKEN_NAME;
 		if (str == keyword_fun) type = TOKEN_FUN;

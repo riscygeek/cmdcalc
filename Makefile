@@ -12,7 +12,7 @@ all: $(objects)
 	$(LD) -o cmdcalc $(objects) $(LDFLAGS)
 
 %.o: %.c
-	$(CC) -o $@ $< $(CFLAGS)
+	$(CC) -c -o $@ $< $(CFLAGS)
 
 clean:
 	rm -rf *.o
