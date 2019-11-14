@@ -5,7 +5,7 @@
 #include "parser.h"
 #include "buf.h"
 
-#define VERSION 4
+#define VERSION 5
 #define MAX_FPARAMS 4
 
 struct variable {
@@ -59,6 +59,27 @@ static int func_sqr(int x) { return x * x; }
 static int func_sqrt(int x) { return (int)sqrtf(x); }
 static int func_version() { return VERSION; }
 static int func_add(int a, int b) { return a + b; }
+static int func_sub(int a, int b) { return a - b; }
+static int func_mul(int a, int b) { return a * b; }
+static int func_div(int a, int b) { return a / b; }
+static int func_mod(int a, int b) { return a % b; }
+static int func_bitand(int a, int b) { return a & b; }
+static int func_bitor (int a, int b) { return a | b; }
+static int func_bitxor(int a, int b) { return a ^ b; }
+static int func_bitnot(int a) { return ~a; }
+static int func_fma(int a, int b, int c) { return a + b * c; }
+static int func_puti(int a) { return outform("%d\n"), 0; }
+static int func_putc(int a) { return outchar(a), outchar('\n'), 0; }
+static int func_and(int a, int b) { return a && b; }
+static int func_or(int a, int b) { return a || b; }
+static int func_not(int a) { return !a; }
+static int func_greater(int a, int b) { return a > b; }
+static int func_less(int a, int b) { return a < b; }
+static int func_equal(int a, int b) { return a == b; }
+static int func_if(int c, int a, int b) { return c ? a : b; }
+static int func_pow(int b, int e) { return (int)pow(b, e); }
+// fun isupper(ch) = and(greater(ch, 64), less(ch, 91))
+
 
 static struct function* get_func(const char* name) {
 	const size_t funcs_len = buf_len(funcs);
@@ -68,13 +89,33 @@ static struct function* get_func(const char* name) {
 	}
 	return NULL;
 }
+void add_builtin(const char* name, int paramcount, void* callback) {
+	buf_push(funcs, ((struct function){ strint(name), paramcount, 1, callback }));
+}
 void init_funcs(void) {
-#define add(name, pc, cb) buf_push(funcs, ((struct function){ strint(name), pc, 1, cb }))
-	add("sqr", 1, func_sqr);
-	add("sqrt", 1, func_sqrt);
-	add("version", 0, func_version);
-	add("add", 2, func_add);
-#undef add
+	add_builtin("sqr", 1, func_sqr);
+	add_builtin("sqrt", 1, func_sqrt);
+	add_builtin("version", 0, func_version);
+	add_builtin("add", 2, func_add);
+	add_builtin("sub", 2, func_sub);
+	add_builtin("mul", 2, func_mul);
+	add_builtin("div", 2, func_div);
+	add_builtin("mod", 2, func_mod);
+	add_builtin("bitand", 2, func_bitand);
+	add_builtin("bitor" , 2, func_bitor );
+	add_builtin("bitxor", 2, func_bitxor);
+	add_builtin("bitnot", 1, func_bitnot);
+	add_builtin("and", 2, func_and);
+	add_builtin("or" , 2, func_or);
+	add_builtin("not", 1, func_not);
+	add_builtin("fma", 3, func_fma);
+	add_builtin("puti", 1, func_puti);
+	add_builtin("putc", 1, func_putc);
+	add_builtin("greater", 2, func_greater);
+	add_builtin("less", 2, func_less);
+	add_builtin("equal", 2, func_equal);
+	add_builtin("if", 3, func_if);
+	add_builtin("pow", 2, func_pow);
 	buf_push(stack, ((struct stack_frame){ NULL, NULL }));
 }
 static int expression();
@@ -82,7 +123,10 @@ static void new_frame(const struct function* f, Token* saved1, size_t saved2) {
 	buf_push(stack, ((struct stack_frame){ NULL, f, saved1, saved2 }));
 }
 static void pop_frame() {
-	buf_free(buf_last(stack)->vars);
+	struct stack_frame* frame = buf_last(stack);
+	tokens = frame->saved_tokens;
+	tokenpos = frame->saved_tokenpos;
+	buf_free(frame->vars);
 	buf_pop(stack);
 }
 static int call(const char* name, int params[MAX_FPARAMS], int nParams) {
@@ -289,7 +333,9 @@ static void statement(void) {
 			next_token();
 			outstr("Functions:\n");
 			for (size_t i = 0; i < funcs_len; ++i) {
-				outform("%s\n", funcs[i].name);
+				outstr(funcs[i].name);
+				if (funcs[i].builtin) outstr(" (builtin)");
+				outchar('\n');
 			}
 		}
 		else if (strcmp(tokens[tokenpos].strVal, "vars") == 0) {
