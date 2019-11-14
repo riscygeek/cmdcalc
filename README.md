@@ -11,6 +11,7 @@ Linux/WSL: <br>
 # Using cmdcalc
 - Expressions (like <code>1 + 2 * a / f(42)</code>)
 - User-defined functions (like <code>fun add3(a, b, c) = a + b + c</code>)
+- Conditional values (like <code>if(greater(a, b), 42, 39)</code>)
 - List all Variables with <code>vars</code>
 - List all Functions with <code>funcs</code>
 
