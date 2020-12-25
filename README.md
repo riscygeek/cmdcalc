@@ -1,6 +1,9 @@
 # Commandline-Calculator
 A simple command line calculator
 
+# Dependencies
+- GNU Readline
+
 # How to install
 Windows: <br>
 Compile with Visual Studio
@@ -13,9 +16,9 @@ Compile with CMake
 - Variables (<code>a=99</code>)
 
 # Operators
-- + Addition
-- - Subtraction
-- * Multiplication
+- \+ Addition
+- \- Subtraction
+- \* Multiplication
 - ** Power
 - / Division
 - = Assignment
