@@ -1,14 +1,18 @@
 #include <stdlib.h>
 #include "lexer.h"
 #include "parser.h"
+#include "error.h"
 #include "buf.h"
 
-#define alloc(t) ((t*)malloc(sizeof(t)))
+#define alloc(t) ((t*)calloc(1, sizeof(t)))
 
 static Expression* expr_addition(void);
+static Expression* expr_conditional(void);
+static Expression* parse_expr1(void);
 static Expression* expr_prim(void) {
 	Expression* expr = alloc(Expression);
-	if (lexer_matches(TK_INTEGER)) {
+	if (!expr || lexer_matches(TK_ERROR)) return NULL;
+	else if (lexer_matches(TK_INTEGER)) {
 		const Token tk = lexer_next();
 		expr->type = EXPR_INTEGER;
 		expr->pos = tk.pos;
@@ -22,6 +26,13 @@ static Expression* expr_prim(void) {
 		expr->fVal = tk.fVal;
 		return expr;
 	}
+	else if (lexer_matches(TK_STRING)) {
+		const Token tk = lexer_next();
+		expr->type = EXPR_STRING;
+		expr->pos = tk.pos;
+		expr->str = tk.str;
+		return expr;
+	}
 	else if (lexer_matches(TK_NAME)) {
 		const Token tk = lexer_next();
 		if (lexer_match(TK_LPAREN)) {
@@ -31,17 +42,27 @@ static Expression* expr_prim(void) {
 			expr->fcall.args = NULL;
 			
 			if (!lexer_matches(TK_RPAREN)) {
-				do { buf_push(expr->fcall.args, expr_addition()); }
-				while (!lexer_match(TK_COMMA));
+				do {
+					Expression* e = expr_conditional();
+					if (!e) {
+						free_expr(expr);
+						free_expr(e);
+						return NULL;
+					}
+					else buf_push(expr->fcall.args, e);
+				} while (lexer_match(TK_COMMA));
 			}
-			
 			expr->pos.end = lexer_expect(TK_RPAREN).pos.end;
 		}
 		else if (lexer_match(TK_EQUALS)) {
 			expr->type = EXPR_ASSIGN;
 			expr->pos.begin = tk.pos.begin;
 			expr->assign.name = tk.str;
-			expr->assign.expr = expr_addition();
+			expr->assign.expr = expr_conditional();
+			if (!expr->assign.expr) {
+				free_expr(expr);
+				return NULL;
+			}
 			expr->pos.end = expr->assign.expr->pos.end;
 		}
 		else {
@@ -54,15 +75,22 @@ static Expression* expr_prim(void) {
 	else if (lexer_matches(TK_LPAREN)) {
 		expr->type = EXPR_PAREN;
 		expr->pos.begin = lexer_next().pos.begin;
-		expr->expr = parse_expr();
+		expr->expr = parse_expr1();
+		if (!expr->expr) {
+			free_expr(expr);
+			return NULL;
+		}
 		expr->pos.end = lexer_expect(TK_RPAREN).pos.end;
-		return expr;
+		if (errored) {
+			free_expr(expr);
+			return NULL;
+		}
+		else return expr;
 	}
 	else {
-		// TODO: error()
-		printf("expected expression got ");
-		print_token(lexer_peek(), stderr);
-		exit(EXIT_FAILURE);
+		error(lexer_peek().pos, "expected expression");
+		free_expr(expr);
+		return NULL;
 	}
 }
 static Expression* expr_unary(void) {
@@ -72,6 +100,10 @@ static Expression* expr_unary(void) {
 		expr->unary.op = lexer_next();
 		expr->pos.begin = expr->unary.op.pos.begin;
 		expr->unary.expr = expr_unary();
+		if (!expr->unary.expr) {
+			free_expr(expr);
+			return NULL;
+		}
 		expr->pos.end = expr->unary.expr->pos.end;
 		return expr;
 	}
@@ -79,6 +111,7 @@ static Expression* expr_unary(void) {
 }
 static Expression* expr_exponent(void) {
 	Expression* left = expr_unary();
+	if (!left) return NULL;
 	while (lexer_matches(TK_STARSTAR)) {
 		Expression* expr = alloc(Expression);
 		expr->type = EXPR_BINARY;
@@ -86,6 +119,11 @@ static Expression* expr_exponent(void) {
 		expr->binary.op = lexer_next();
 		expr->pos.begin = left->pos.begin;
 		expr->binary.right = expr_unary();
+		if (!expr->binary.right) {
+			free_expr(expr);
+			free_expr(left);
+			return NULL;
+		}
 		expr->pos.end = expr->binary.right->pos.end;
 		left = expr;
 	}
@@ -93,6 +131,7 @@ static Expression* expr_exponent(void) {
 }
 static Expression* expr_factor(void) {
 	Expression* left = expr_exponent();
+	if (!left) return NULL;
 	while (lexer_matches(TK_STAR) || lexer_matches(TK_SLASH)) {
 		Expression* expr = alloc(Expression);
 		expr->type = EXPR_BINARY;
@@ -100,6 +139,11 @@ static Expression* expr_factor(void) {
 		expr->binary.op = lexer_next();
 		expr->pos.begin = left->pos.begin;
 		expr->binary.right = expr_exponent();
+		if (!expr->binary.right) {
+			free_expr(left);
+			free_expr(expr);
+			return NULL;
+		}
 		expr->pos.end = expr->binary.right->pos.end;
 		left = expr;
 	}
@@ -108,6 +152,7 @@ static Expression* expr_factor(void) {
 
 static Expression* expr_addition(void) {
 	Expression* left = expr_factor();
+	if (!left) return NULL;
 	while (lexer_matches(TK_PLUS) || lexer_matches(TK_MINUS)) {
 		Expression* expr = alloc(Expression);
 		expr->type = EXPR_BINARY;
@@ -115,15 +160,68 @@ static Expression* expr_addition(void) {
 		expr->binary.op = lexer_next();
 		expr->pos.begin = left->pos.begin;
 		expr->binary.right = expr_factor();
+		if (!expr->binary.right) {
+			free_expr(left);
+			free_expr(expr);
+			return NULL;
+		}
 		expr->pos.end = expr->binary.right->pos.end;
 		left = expr;
 	}
 	return left;
 }
-Expression* parse_expr(void) { return expr_addition(); }
+static Expression* expr_conditional(void) {
+	Expression* cond = expr_addition();
+	if (!cond) return NULL;
+	if (!lexer_match(TK_QMARK)) return cond;
+	Expression* expr = alloc(Expression);
+	expr->type = EXPR_CONDITIONAL;
+	expr->pos.begin = cond->pos.begin;
+	expr->conditional.cond = cond;
+	expr->conditional.true_case = expr_conditional();
+	if (!expr->conditional.true_case) goto failed;
+	lexer_expect(TK_COLON);
+	if (errored) goto failed;
+	expr->conditional.false_case = expr_conditional();
+	if (!expr->conditional.false_case) goto failed;
+	expr->pos.end = expr->conditional.false_case->pos.end;
+	return expr;
+failed:
+	free_expr(expr);
+	return NULL;
+}
+static Expression* expr_comma(void) {
+	Expression* left = expr_conditional();
+	if (!left) return NULL;
+	if (lexer_matches(TK_COMMA)) {
+		Expression* expr = alloc(Expression);
+		expr->type = EXPR_COMMA;
+		expr->pos.begin = left->pos.begin;
+		expr->comma = NULL;
+		buf_push(expr->comma, left);
+		while (lexer_match(TK_COMMA)) {
+			buf_push(expr->comma, expr_conditional());
+			if (errored) {
+				free_expr(expr);
+				return NULL;
+			}
+		}
+		expr->pos.end = expr->comma[buf_len(expr->comma) - 1]->pos.end;
+		return expr;
+	}
+	return left;
+}
+static Expression* parse_expr1(void) { return expr_comma(); }
+Expression* parse_expr(void) {
+	Expression* expr = parse_expr1();
+	if (!expr) return NULL;
+	lexer_expect(TK_EOF);
+	return expr;
+}
 
 
 void print_expr(const Expression* expr, FILE* file) {
+	if (!expr) return;
 	switch (expr->type) {
 	case EXPR_INTEGER:  fprintf(file, "%ju", expr->uVal); break;
 	case EXPR_FLOAT:    fprintf(file, "%f", expr->fVal); break;
@@ -160,10 +258,28 @@ void print_expr(const Expression* expr, FILE* file) {
 		fprintf(file, "%s = ", expr->assign.name);
 		print_expr(expr->assign.expr, file);
 		break;
+	case EXPR_STRING:
+		fprintf(file, "\"%s\"", expr->str);
+		break;
+	case EXPR_COMMA:
+		print_expr(expr->comma[0], file);
+		for (size_t i = 1; i < buf_len(expr->comma); ++i) {
+			fputs(", ", file);
+			print_expr(expr->comma[i], file);
+		}
+		break;
+	case EXPR_CONDITIONAL:
+		print_expr(expr->conditional.cond, file);
+		fputs(" ? ", file);
+		print_expr(expr->conditional.true_case, file);
+		fputs(" : ", file);
+		print_expr(expr->conditional.false_case, file);
+		break;
 	}
 }
 
 void free_expr(Expression* expr) {
+	if (!expr) return;
 	switch (expr->type) {
 	case EXPR_PAREN:    free_expr(expr->expr); break;
 	case EXPR_UNARY:    free_expr(expr->unary.expr); break;
@@ -176,6 +292,16 @@ void free_expr(Expression* expr) {
 		for (size_t i = 0; i < buf_len(expr->fcall.args); ++i)
 			free_expr(expr->fcall.args[i]);
 		buf_free(expr->fcall.args);
+		break;
+	case EXPR_COMMA:
+		for (size_t i = 0; i < buf_len(expr->comma); ++i)
+			free_expr(expr->comma[i]);
+		buf_free(expr->comma);
+		break;
+	case EXPR_CONDITIONAL:
+		free_expr(expr->conditional.cond);
+		free_expr(expr->conditional.true_case);
+		free_expr(expr->conditional.false_case);
 		break;
 	default: break;
 	}

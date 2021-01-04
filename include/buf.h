@@ -28,6 +28,7 @@ struct BufHdr {
 #define buf_pop(buf) ((buf) ? (buf)[--buf__hdr(buf)->len], 1 : 0)
 #define buf_free(buf) ((buf) ? (free(buf__hdr(buf)), (buf) = NULL) : 0)
 #define buf_last(buf) ((buf) + buf_size(buf) - 1)
+#define buf_reserve(buf, len) ((buf_size(buf) < (len)) ? ((buf) = buf__grow((buf), (len), sizeof(*(buf)))) : (buf))
 
 inline static void* buf__grow(void* buf, size_t new_length, size_t elem_size) {
 	assert(buf_capacity(buf) <= (SIZE_MAX - 1) / 2);

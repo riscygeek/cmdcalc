@@ -11,6 +11,9 @@ enum ExpressionType {
 	EXPR_BINARY,
 	EXPR_FCALL,
 	EXPR_ASSIGN,
+	EXPR_STRING,
+	EXPR_COMMA,
+	EXPR_CONDITIONAL,
 };
 
 typedef struct Expression {
@@ -22,6 +25,7 @@ typedef struct Expression {
 		tkfloat_t fVal;
 		const char* str;
 		struct Expression* expr;
+		struct Expression** comma;
 		struct {
 			Token op;
 			struct Expression* expr;
@@ -39,6 +43,11 @@ typedef struct Expression {
 			const char* name;
 			struct Expression* expr;
 		} assign;
+		struct {
+			struct Expression* cond;
+			struct Expression* true_case;
+			struct Expression* false_case;
+		} conditional;
 	};
 } Expression;
 

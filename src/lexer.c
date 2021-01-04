@@ -4,6 +4,7 @@
 #include "strint.h"
 #include "input.h"
 #include "lexer.h"
+#include "error.h"
 #include "buf.h"
 
 static Token peekd;
@@ -41,11 +42,11 @@ bool lexer_match(const enum TokenType type) {
 }
 Token lexer_expect(const enum TokenType type) {
 	const Token tk = lexer_next();
+	if (tk.type == TK_ERROR) return (Token){ TK_ERROR };
 	if (tk.type == type) return tk;
 	else {
-		// TODO: error handling
-		printf("invalid token at %zu\n", tk.pos.begin);
-		exit(EXIT_FAILURE);
+		error(tk.pos, "invalid token %t", tk);
+		return (Token){ TK_ERROR };
 	}
 }
 static bool isname(const char ch) {
@@ -76,6 +77,36 @@ static Token lexer_impl(void) {
 		buf_free(buf);
 		return (Token){ TK_NAME, { start, input_pos() }, .str = name };
 	}
+	else if (ch == '"') {
+		char* buf = NULL;
+		input_skip();
+		while ((ch = input_next()) != '"') {
+			if (ch == '\\') {
+				ch = input_next();
+				switch (ch) {
+				case '\'':  ch = '\''; break;
+				case '\\':  ch = '\\'; break;
+				case '"':   ch = '\"'; break;
+				case 'a':   ch = '\a'; break;
+				case 'b':   ch = '\b'; break;
+				case 'f':   ch = '\f'; break;
+				case 'n':   ch = '\n'; break;
+				case 'r':   ch = '\r'; break;
+				case 't':   ch = '\t'; break;
+				case 'v':   ch = '\v'; break;
+				case '0':   ch = '\0'; break;
+				default:
+					error((tokenpos_t){input_pos(), input_pos()}, "illegal escape sequence '\\%c'", ch);
+					return (Token){ TK_ERROR };
+				}
+			}
+			buf_push(buf, ch);
+		}
+		buf_push(buf, '\0');
+		const char* str = strint(buf);
+		buf_free(buf);
+		return (Token){ TK_STRING, { start, input_pos() }, .str = str };
+	}
 	else {
 		input_skip();
 		switch (ch) {
@@ -90,11 +121,12 @@ static Token lexer_impl(void) {
 		case ')':   return (Token){ TK_RPAREN, {start, start} };
 		case ',':   return (Token){ TK_COMMA, {start, start} };
 		case '=':   return (Token){ TK_EQUALS, {start, start} };
+		case '?':   return (Token){ TK_QMARK, {start, start} };
+		case ':':   return (Token){ TK_COLON, {start, start} };
 		case '\0':  return (Token){ TK_EOF, {start, start} };
 		default:
-			// TODO: error()
-			printf("illegal input '%c' at %zu\n", ch, start);
-			exit(1);
+			error((tokenpos_t){start, start}, "illegal input '%c'", ch);
+			return (Token){ TK_ERROR };
 		}
 	}
 }
