@@ -14,6 +14,8 @@ enum ExpressionType {
 	EXPR_STRING,
 	EXPR_COMMA,
 	EXPR_CONDITIONAL,
+	EXPR_AT,
+	EXPR_ARRAY,
 };
 
 typedef struct Expression {
@@ -48,6 +50,10 @@ typedef struct Expression {
 			struct Expression* true_case;
 			struct Expression* false_case;
 		} conditional;
+		struct {
+			struct Expression* base;
+			struct Expression* index;
+		} at;
 	};
 } Expression;
 

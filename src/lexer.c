@@ -119,6 +119,8 @@ static Token lexer_impl(void) {
 		case '/':   return (Token){ TK_SLASH, {start, start} };
 		case '(':   return (Token){ TK_LPAREN, {start, start} };
 		case ')':   return (Token){ TK_RPAREN, {start, start} };
+		case '[':   return (Token){ TK_LBRACK, {start, start} };
+		case ']':   return (Token){ TK_RBRACK, {start, start} };
 		case ',':   return (Token){ TK_COMMA, {start, start} };
 		case '=':   return (Token){ TK_EQUALS, {start, start} };
 		case '?':   return (Token){ TK_QMARK, {start, start} };

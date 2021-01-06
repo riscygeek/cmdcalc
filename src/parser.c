@@ -33,6 +33,20 @@ static Expression* expr_prim(void) {
 		expr->str = tk.str;
 		return expr;
 	}
+	else if (lexer_matches(TK_LBRACK)) {
+		expr->type = EXPR_ARRAY;
+		expr->pos.begin = lexer_next().pos.begin;
+		expr->comma = NULL;
+		if (!lexer_matches(TK_RBRACK)) {
+			do {
+				Expression* elem = expr_conditional();
+				if (!elem) return free_expr(expr), NULL;
+				buf_push(expr->comma, elem);
+			} while (lexer_match(TK_COMMA));
+		}
+		expr->pos.end = lexer_expect(TK_RBRACK).pos.end;
+		return errored ? free_expr(expr), NULL : expr;
+	}
 	else if (lexer_matches(TK_NAME)) {
 		const Token tk = lexer_next();
 		if (lexer_match(TK_LPAREN)) {
@@ -53,6 +67,10 @@ static Expression* expr_prim(void) {
 				} while (lexer_match(TK_COMMA));
 			}
 			expr->pos.end = lexer_expect(TK_RPAREN).pos.end;
+			if (errored) {
+				free_expr(expr);
+				return NULL;
+			}
 		}
 		else if (lexer_match(TK_EQUALS)) {
 			expr->type = EXPR_ASSIGN;
@@ -93,6 +111,22 @@ static Expression* expr_prim(void) {
 		return NULL;
 	}
 }
+static Expression* expr_at(void) {
+	Expression* base = expr_prim();
+	if (!base) return NULL;
+	while (lexer_match(TK_LBRACK)) {
+		Expression* expr = alloc(Expression);
+		expr->type = EXPR_AT;
+		expr->pos.begin = base->pos.begin;
+		expr->at.base = base;
+		expr->at.index = parse_expr1();
+		if (errored) return free_expr(expr), NULL;
+		expr->pos.end = lexer_expect(TK_RBRACK).pos.end;
+		if (errored) return free_expr(expr), NULL;
+		base = expr;
+	}
+	return base;
+}
 static Expression* expr_unary(void) {
 	if (lexer_matches(TK_PLUS) || lexer_matches(TK_MINUS)) {
 		Expression* expr = alloc(Expression);
@@ -107,7 +141,7 @@ static Expression* expr_unary(void) {
 		expr->pos.end = expr->unary.expr->pos.end;
 		return expr;
 	}
-	else return expr_prim();
+	else return expr_at();
 }
 static Expression* expr_exponent(void) {
 	Expression* left = expr_unary();
@@ -268,12 +302,27 @@ void print_expr(const Expression* expr, FILE* file) {
 			print_expr(expr->comma[i], file);
 		}
 		break;
+	case EXPR_ARRAY:
+		fputc('[', file);
+		print_expr(expr->comma[0], file);
+		for (size_t i = 1; i < buf_len(expr->comma); ++i) {
+			fputs(", ", file);
+			print_expr(expr->comma[i], file);
+		}
+		fputc(']', file);
+		break;
 	case EXPR_CONDITIONAL:
 		print_expr(expr->conditional.cond, file);
 		fputs(" ? ", file);
 		print_expr(expr->conditional.true_case, file);
 		fputs(" : ", file);
 		print_expr(expr->conditional.false_case, file);
+		break;
+	case EXPR_AT:
+		print_expr(expr->at.base, file);
+		fputc('[', file);
+		print_expr(expr->at.index, file);
+		fputc(']', file);
 		break;
 	}
 }
@@ -294,6 +343,7 @@ void free_expr(Expression* expr) {
 		buf_free(expr->fcall.args);
 		break;
 	case EXPR_COMMA:
+	case EXPR_ARRAY:
 		for (size_t i = 0; i < buf_len(expr->comma); ++i)
 			free_expr(expr->comma[i]);
 		buf_free(expr->comma);
@@ -302,6 +352,10 @@ void free_expr(Expression* expr) {
 		free_expr(expr->conditional.cond);
 		free_expr(expr->conditional.true_case);
 		free_expr(expr->conditional.false_case);
+		break;
+	case EXPR_AT:
+		free_expr(expr->at.base);
+		free_expr(expr->at.index);
 		break;
 	default: break;
 	}

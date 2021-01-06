@@ -41,10 +41,12 @@ void free_evaluation_context(evaluation_context_t* ctx) {
 	for (size_t i = 0; i < buf_len(ctx->funcs); ++i)
 		free_function(&ctx->funcs[i]);
 	buf_free(ctx->funcs);
+	for (size_t i = 0; i < buf_len(ctx->vars); ++i)
+		free_value(ctx->vars[i].value);
 	buf_free(ctx->vars);
 	free(ctx);
 }
-void evaluation_context_add_var(evaluation_context_t* ctx, const char* name, value_t value) {
+void evaluation_context_add_var(evaluation_context_t* ctx, const char* name, value_t* value) {
 	name = strint(name);
 	for (size_t i = 0; i < buf_len(ctx->vars); ++i) {
 		if (name == ctx->vars[i].name) {
@@ -104,9 +106,21 @@ const function_t* evaluation_context_get_func(const evaluation_context_t* ctx, c
 	}
 	return NULL;
 }
+void evaluation_context_unset(evaluation_context_t* ctx, const char* name) {
+	name = strint(name);
+	for (size_t i = 0; i < buf_len(ctx->vars); ++i) {
+		if (ctx->vars[i].name == name) {
+			free_value(ctx->vars[i].value);
+			for (size_t j = i+1; j < buf_len(ctx->vars); ++j)
+				ctx->vars[j-1] = ctx->vars[j];
+			buf_pop(ctx->vars);
+			break;
+		}
+	}
+}
 
 
-value_t evaluate(evaluation_context_t* ctx, const Expression* expr) {
+value_t* evaluate(evaluation_context_t* ctx, const Expression* expr) {
 	if (!expr) return make_value(VALUE_EMPTY);
 	switch (expr->type) {
 	case EXPR_INTEGER:  return make_integer_value(expr->iVal);
@@ -115,31 +129,40 @@ value_t evaluate(evaluation_context_t* ctx, const Expression* expr) {
 	case EXPR_PAREN:    return evaluate(ctx, expr->expr);
 	case EXPR_NAME: {
 		const variable_t* var = evaluation_context_get_var(ctx, expr->str);
-		return var ? var->value : make_value(VALUE_EMPTY);
+		if (!var) error(expr->pos, "variable %s not found", expr->str);
+		return var ? copy_value(var->value) : make_value(VALUE_EMPTY);
 	}
 	case EXPR_UNARY: {
-		const value_t value = evaluate(ctx, expr->unary.expr);
+		value_t* value = evaluate(ctx, expr->unary.expr);
+		value_t* result;
 		switch (expr->unary.op.type) {
-		case TK_PLUS:   return copy_value(value);
-		case TK_MINUS:  return value_neg(value);
-		default:        return make_value(VALUE_INVALID);
+		case TK_PLUS:   result = copy_value(value); break;
+		case TK_MINUS:  result = value_neg(value); break;
+		default:        result = make_value(VALUE_INVALID); break;
 		}
+		free_value(value);
+		return result;
 	}
 	case EXPR_BINARY: {
-		const value_t left = evaluate(ctx, expr->binary.left);
-		const value_t right = evaluate(ctx, expr->binary.right);
+		value_t* left = evaluate(ctx, expr->binary.left);
+		value_t* right = evaluate(ctx, expr->binary.right);
+		value_t* result;
 		switch (expr->binary.op.type) {
-		case TK_PLUS:       return value_add(left, right);
-		case TK_MINUS:      return value_sub(left, right);
-		case TK_STAR:       return value_mul(left, right);
-		case TK_SLASH:      return value_div(left, right);
-		case TK_STARSTAR:   return value_pow(left, right);
-		default:            return make_value(VALUE_INVALID);
+		case TK_PLUS:       result = value_add(left, right); break;
+		case TK_MINUS:      result = value_sub(left, right); break;
+		case TK_STAR:       result = value_mul(left, right); break;
+		case TK_SLASH:      result = value_div(left, right); break;
+		case TK_STARSTAR:   result = value_pow(left, right); break;
+		default:            result = make_value(VALUE_INVALID); break;
 		}
+		free_value(left);
+		free_value(right);
+		return result;
 	}
 	case EXPR_ASSIGN: {
-		const value_t value = evaluate(ctx, expr->assign.expr);
-		evaluation_context_add_var(ctx, expr->assign.name, value);
+		value_t* value = evaluate(ctx, expr->assign.expr);
+		if (!errored && value)
+			evaluation_context_add_var(ctx, expr->assign.name, value);
 		return make_value(VALUE_EMPTY);
 	}
 	case EXPR_FCALL: {
@@ -150,37 +173,70 @@ value_t evaluate(evaluation_context_t* ctx, const Expression* expr) {
 		}
 		if (func->user) {
 			evaluation_context_t* func_ctx = copy_evaluation_context(ctx);
-			// f(x, y, z) = x * y * z;
-			for (size_t i = 0; i < my_min(buf_len(expr->fcall.args), buf_len(func->userfunc.paramnames)); ++i)
-				evaluation_context_add_var(func_ctx, func->userfunc.paramnames[i], evaluate(ctx, expr->fcall.args[i]));
-			const value_t value = evaluate(func_ctx, func->userfunc.body);
+			for (size_t i = 0; i < buf_len(func->userfunc.paramnames); ++i) {
+				value_t* val = i < buf_len(expr->fcall.args) ? evaluate(ctx, expr->fcall.args[i]) : make_value(VALUE_EMPTY);
+				evaluation_context_add_var(func_ctx, func->userfunc.paramnames[i], val);
+			}
+			value_t* value = evaluate(func_ctx, func->userfunc.body);
 			free_evaluation_context(func_ctx);
 			return value;
 		}
 		else {
 			const size_t len = buf_len(expr->fcall.args);
-			value_t* values = (value_t*)malloc(sizeof(value_t) * len);
+			value_t** values = (value_t**)malloc(sizeof(value_t*) * len);
 			for (size_t i = 0; i < len; ++i)
 				values[i] = evaluate(ctx, expr->fcall.args[i]);
-			return func->native(values, len);
+			value_t* result = func->native(ctx, (const value_t* const*) values, len);
+			for (size_t i = 0; i < len; ++i)
+				free_value(values[i]);
+			free(values);
+			return result;
 		}
 	}
 	case EXPR_CONDITIONAL: {
-		const value_t vcond = evaluate(ctx, expr->conditional.cond);
+		value_t* vcond = evaluate(ctx, expr->conditional.cond);
 		bool cond;
-		switch (vcond.type) {
+		switch (vcond->type) {
 		case VALUE_EMPTY:       cond = false; break;
-		case VALUE_STRING:      cond = (strcmp(vcond.str, "true") == 0); break;
-		case VALUE_INTEGER:     cond = vcond.iVal != 0; break;
-		case VALUE_FLOAT:       cond = vcond.fVal != 0.0; break;
-		default:                return make_value(VALUE_INVALID);
+		case VALUE_STRING:      cond = (strcmp(vcond->str, "true") == 0); break;
+		case VALUE_INTEGER:     cond = vcond->iVal != 0; break;
+		case VALUE_FLOAT:       cond = vcond->fVal != 0.0; break;
+		default:                return free_value(vcond), make_value(VALUE_INVALID);
 		}
-		return evaluate(ctx, cond ? expr->conditional.true_case : expr->conditional.false_case);
+		value_t* result = evaluate(ctx, cond ? expr->conditional.true_case : expr->conditional.false_case);
+		free_value(vcond);
+		return result;
 	}
 	case EXPR_COMMA:
 		for (size_t i = 0; i < buf_len(expr->comma) - 1; ++i)
 			evaluate(ctx, expr->comma[i]);
 		return evaluate(ctx, expr->comma[buf_len(expr->comma) - 1]);
+	case EXPR_AT: {
+		// TODO: support for ("Hello World"[1, 2] == "el")
+		value_t* array = evaluate(ctx, expr->at.base);
+		if (!array || errored) return NULL;
+		value_t* index = evaluate(ctx, expr->at.index);
+		if (!index || errored) return free_value(array), NULL;
+		if (index->type != VALUE_INTEGER) {
+			error(expr->at.index->pos, "index has to be an unsigned integer!");
+			free_value(array);
+			free_value(index);
+			return NULL;
+		}
+		value_t* elem = value_array_get(array, index->iVal);
+		if (elem->type == VALUE_INVALID)
+			error(expr->at.base->pos, "expected array or string");
+		free_value(array);
+		free_value(index);
+		return elem;
+	}
+	case EXPR_ARRAY: {
+		const size_t len = buf_len(expr->comma);
+		value_t* array = make_array_value(len);
+		for (size_t i = 0; i < len; ++i)
+			buf_push(array->values, evaluate(ctx, expr->comma[i]));
+		return array;
+	}
 	default:
 		error(expr->pos, "this expression is not supported");
 		return make_value(VALUE_EMPTY);

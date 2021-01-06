@@ -13,6 +13,8 @@ const char* token_type_names[NUM_TOKENS] = {
 	[TK_SLASH] = "/",
 	[TK_LPAREN] = "(",
 	[TK_RPAREN] = ")",
+	[TK_LBRACK] = "[",
+	[TK_RBRACK] = "]",
 	[TK_COMMA] = ",",
 	[TK_EQUALS] = "=",
 	[TK_QMARK] = "?",

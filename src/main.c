@@ -115,11 +115,12 @@ int main(const int argc, const char* argv[]) {
 		
 		Expression* expr = parse_expr();
 		if (!errored || !expr) {
-			const value_t value = evaluate(ctx, expr);
-			if (!errored && value.type != VALUE_EMPTY) {
+			value_t* value = evaluate(ctx, expr);
+			if (!errored && value->type != VALUE_EMPTY) {
 				print_value(value, stdout);
 				putchar('\n');
 			}
+			free_value(value);
 		}
 		
 		free_expr(expr);
