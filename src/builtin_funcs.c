@@ -57,6 +57,20 @@ static value_t* builtin_typestr(evaluation_context_t* ctx, const value_t* const*
 	default:            return make_string_value("error");
 	}
 }
+static value_t* builtin_invalid(evaluation_context_t* ctx, const value_t* const* args, size_t num) {
+	return make_value(VALUE_INVALID);
+}
+static value_t* builtin_empty(evaluation_context_t* ctx, const value_t* const* args, size_t num) {
+	return make_value(VALUE_EMPTY);
+}
+static value_t* builtin_sqrt(evaluation_context_t* ctx, const value_t* const* args, size_t num) {
+	if (num < 1) return make_value(VALUE_INVALID);
+	else switch (args[0]->type) {
+	case VALUE_INTEGER: return make_float_value(sqrt(args[0]->iVal));
+	case VALUE_FLOAT:   return make_float_value(sqrt(args[0]->fVal));
+	default:            return make_value(VALUE_INVALID);
+	}
+}
 
 #define ch1(t, a, b) (((a->type) == (t)) || ((b->type) == (t)))
 static value_t* builtin_equals(evaluation_context_t* ctx, const value_t* const* args, size_t num) {
@@ -114,6 +128,17 @@ static value_t* builtin_append(evaluation_context_t* ctx, const value_t* const* 
 		buf_push(array->values, copy_value(args[i]));
 	return array;
 }
+static value_t* builtin_list_vars(evaluation_context_t* ctx, const value_t* const* args, size_t num) {
+	const size_t len = buf_len(ctx->vars);
+	value_t* array = make_array_value(len);
+	for (size_t i = 0; i < len; ++i) {
+		value_t* val = make_array_value(2);
+		buf_push(val->values, make_string_value(ctx->vars[i].name));
+		buf_push(val->values, copy_value(ctx->vars[i].value));
+		buf_push(array->values, val);
+	}
+	return array;
+}
 
 
 #define add_builtin(name) evaluation_context_add_func(ctx, #name, builtin_##name)
@@ -132,4 +157,8 @@ void evaluation_context_add_builtins(evaluation_context_t* ctx) {
 	add_builtin(print);
 	add_builtin(unset);
 	add_builtin(append);
+	add_builtin(list_vars);
+	add_builtin(invalid);
+	add_builtin(empty);
+	add_builtin(sqrt);
 }

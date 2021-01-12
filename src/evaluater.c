@@ -28,8 +28,12 @@ evaluation_context_t* copy_evaluation_context(const evaluation_context_t* old_ct
 	const size_t funcs_len = buf_len(old_ctx->funcs);
 	buf_reserve(ctx->vars, vars_len);
 	buf_reserve(ctx->funcs, funcs_len);
-	for (size_t i = 0; i < vars_len; ++i)
-		buf_push(ctx->vars, old_ctx->vars[i]);
+	for (size_t i = 0; i < vars_len; ++i) {
+		variable_t var;
+		var.name = old_ctx->vars[i].name;
+		var.value = copy_value(old_ctx->vars[i].value);
+		buf_push(ctx->vars, var);
+	}
 	for (size_t i = 0; i < funcs_len; ++i) {
 		function_t f = old_ctx->funcs[i];
 		f.copied = true;
@@ -184,8 +188,14 @@ value_t* evaluate(evaluation_context_t* ctx, const Expression* expr) {
 		else {
 			const size_t len = buf_len(expr->fcall.args);
 			value_t** values = (value_t**)malloc(sizeof(value_t*) * len);
-			for (size_t i = 0; i < len; ++i)
+			for (size_t i = 0; i < len; ++i) {
+				if (errored) {
+					while (i > 0)
+						free_value(values[--i]);
+					return make_value(VALUE_INVALID);
+				}
 				values[i] = evaluate(ctx, expr->fcall.args[i]);
+			}
 			value_t* result = func->native(ctx, (const value_t* const*) values, len);
 			for (size_t i = 0; i < len; ++i)
 				free_value(values[i]);

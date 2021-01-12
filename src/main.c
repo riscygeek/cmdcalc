@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 #include "evaluater.h"
 #include "strint.h"
 #include "parser.h"
@@ -31,12 +32,21 @@ static const char* parse_name(const char* str, size_t* const i) {
 	buf_free(buf);
 	return name;
 }
+static void signal_handler(int signo) {
+	if (signo == SIGINT) {
+		putchar('\n');
+		rl_on_new_line();
+		rl_replace_line("", 0);
+		rl_redisplay();
+	}
+}
 int main(const int argc, const char* argv[]) {
 	evaluation_context_t* ctx = create_evaluation_context();
 	evaluation_context_add_builtins(ctx);
 	char* input;
+	signal(SIGINT, signal_handler);
+	rl_bind_key('\t', rl_complete);
 	while (true) {
-		rl_bind_key('\t', rl_complete);
 		input = readline("> ");
 		if (!input || strcmp(input, "exit") == 0) break;
 		else if (!input[0]) continue;
