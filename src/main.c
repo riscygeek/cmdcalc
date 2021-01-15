@@ -40,6 +40,7 @@ static void signal_handler(int signo) {
 		rl_redisplay();
 	}
 }
+#define skip_space() while (isspace(input[i])) ++i
 int main(const int argc, const char* argv[]) {
 	evaluation_context_t* ctx = create_evaluation_context();
 	evaluation_context_add_builtins(ctx);
@@ -67,23 +68,41 @@ int main(const int argc, const char* argv[]) {
 				puts(ctx->vars[i].name);
 			continue;
 		}
-		else if (memcmp(input, "func", 4) == 0) {
-#define skip_space() while (isspace(input[i])) ++i
-			const char** paramnames = NULL;
-			size_t i;
-			if (!isspace(input[4])) {
-				fputs("      |: expected white-space", stderr);
+		else if (memcmp(input, "unset", 5) == 0) {
+			size_t i = 5;
+			char* name = NULL;
+			if (!isspace(input[i])) {
+				puts("     ^: expected white-space");
 				continue;
 			}
-			for (i = 5; isspace(input[i]); ++i);
+			skip_space();
 			if (!isname1(input[i])) {
-				fprintf(stderr, "%*s^: expected name\n", i + 2, "");
+				printf("%*s^: expected name\n", i + 2, "");
+				continue;
+			}
+			while (isname(input[i])) buf_push(name, input[i++]);
+			buf_push(name, '\0');
+			skip_space();
+			evaluation_context_unset(ctx, name);
+			buf_free(name);
+			continue;
+		}
+		else if (memcmp(input, "func", 4) == 0) {
+			const char** paramnames = NULL;
+			size_t i = 4;
+			if (!isspace(input[i])) {
+				puts("      ^: expected white-space");
+				continue;
+			}
+			skip_space();
+			if (!isname1(input[i])) {
+				printf("%*s^: expected name\n", i + 2, "");
 				continue;
 			}
 			const char* name = parse_name(input, &i);
 			skip_space();
 			if (input[i] != '(') {
-				fprintf(stderr, "%*s^: expected '('\n", i + 2, "");
+				printf("%*s^: expected '('\n", i + 2, "");
 				continue;
 			}
 			++i;
@@ -98,13 +117,13 @@ int main(const int argc, const char* argv[]) {
 				} while (input[i] == ',' && ++i);
 			}
 			if (input[i] != ')') {
-				fprintf(stderr, "%*s^: expected ')'\n", i + 2, "");
+				printf("%*s^: expected ')'\n", i + 2, "");
 				skip: continue;
 			}
 			++i;
 			skip_space();
 			if (input[i] != '=') {
-				fprintf(stderr, "%*s^: expected '='\n", i + 2, "");
+				printf("%*s^: expected '='\n", i + 2, "");
 				continue;
 			}
 			
@@ -117,7 +136,6 @@ int main(const int argc, const char* argv[]) {
 			
 			evaluation_context_add_userfunc(ctx, name, paramnames, body);
 			
-			fflush(stderr);
 			free(input);
 			continue;
 #undef skip_space

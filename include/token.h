@@ -40,4 +40,7 @@ typedef struct {
 void print_token(Token tk, FILE* file);
 extern const char* token_type_names[NUM_TOKENS];
 
+const char* parse_int(tkint_t);
+const char* parse_float(tkfloat_t);
+
 #endif /* FILE_TOKEN_H */

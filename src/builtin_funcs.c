@@ -2,41 +2,44 @@
 #include <string.h>
 #include <math.h>
 #include "evaluater.h"
+#include "token.h"
 #include "buf.h"
 
-static value_t* builtin_sin(evaluation_context_t* ctx, const value_t* const* args, size_t num) {
+#define declare(name) static value_t* builtin_##name(evaluation_context_t* ctx, const value_t* const* args, size_t num)
+
+declare(sin) {
 	if (num < 1) return make_value(VALUE_INVALID);
 	value_t* val = value_cast(args[0], VALUE_FLOAT);
 	return val->type == VALUE_INVALID ? val : make_float_value_from(val, sin(val->fVal));
 }
-static value_t* builtin_cos(evaluation_context_t* ctx, const value_t* const* args, size_t num) {
+declare(cos) {
 	if (num < 1) return make_value(VALUE_INVALID);
 	value_t* val = value_cast(args[0], VALUE_FLOAT);
 	return val->type == VALUE_INVALID ? val : make_float_value_from(val, cos(val->fVal));
 }
-static value_t* builtin_tan(evaluation_context_t* ctx, const value_t* const* args, size_t num) {
+declare(tan) {
 	if (num < 1) return make_value(VALUE_INVALID);
 	value_t* val = value_cast(args[0], VALUE_FLOAT);
 	return val->type == VALUE_INVALID ? val : make_float_value_from(val, tan(val->fVal));
 }
 
-static value_t* builtin_log(evaluation_context_t* ctx, const value_t* const* args, size_t num) {
+declare(log) {
 	if (num < 1) return make_value(VALUE_INVALID);
 	value_t* val = value_cast(args[0], VALUE_FLOAT);
 	return val->type == VALUE_INVALID ? val : make_float_value_from(val, log(val->fVal));
 }
-static value_t* builtin_log10(evaluation_context_t* ctx, const value_t* const* args, size_t num) {
+declare(log10) {
 	if (num < 1) return make_value(VALUE_INVALID);
 	value_t* val = value_cast(args[0], VALUE_FLOAT);
 	return val->type == VALUE_INVALID ? val : make_float_value_from(val, log10(val->fVal));
 }
-static value_t* builtin_log2(evaluation_context_t* ctx, const value_t* const* args, size_t num) {
+declare(log2) {
 	if (num < 1) return make_value(VALUE_INVALID);
 	value_t* val = value_cast(args[0], VALUE_FLOAT);
 	return val->type == VALUE_INVALID ? val : make_float_value_from(val, log2(val->fVal));
 }
 
-static value_t* builtin_exit(evaluation_context_t* ctx, const value_t* const* args, size_t num) {
+declare(exit) {
 	int ec = 0;
 	if (num >= 1) {
 		value_t* val = value_cast(args[0], VALUE_INTEGER);
@@ -46,7 +49,7 @@ static value_t* builtin_exit(evaluation_context_t* ctx, const value_t* const* ar
 	exit(ec);
 	return make_value(VALUE_EMPTY);
 }
-static value_t* builtin_typestr(evaluation_context_t* ctx, const value_t* const* args, size_t num) {
+declare(typestr) {
 	if (num < 0) return make_value(VALUE_INVALID);
 	switch (args[0]->type) {
 	case VALUE_INVALID: return make_string_value("invalid");
@@ -57,13 +60,13 @@ static value_t* builtin_typestr(evaluation_context_t* ctx, const value_t* const*
 	default:            return make_string_value("error");
 	}
 }
-static value_t* builtin_invalid(evaluation_context_t* ctx, const value_t* const* args, size_t num) {
+declare(invalid) {
 	return make_value(VALUE_INVALID);
 }
-static value_t* builtin_empty(evaluation_context_t* ctx, const value_t* const* args, size_t num) {
+declare(empty) {
 	return make_value(VALUE_EMPTY);
 }
-static value_t* builtin_sqrt(evaluation_context_t* ctx, const value_t* const* args, size_t num) {
+declare(sqrt) {
 	if (num < 1) return make_value(VALUE_INVALID);
 	else switch (args[0]->type) {
 	case VALUE_INTEGER: return make_float_value(sqrt(args[0]->iVal));
@@ -73,7 +76,7 @@ static value_t* builtin_sqrt(evaluation_context_t* ctx, const value_t* const* ar
 }
 
 #define ch1(t, a, b) (((a->type) == (t)) || ((b->type) == (t)))
-static value_t* builtin_equals(evaluation_context_t* ctx, const value_t* const* args, size_t num) {
+declare(equals) {
 	if (num != 2) return make_value(VALUE_INVALID);
 	if (ch1(VALUE_INVALID, args[0], args[1]))
 		return make_integer_value(0);
@@ -92,35 +95,27 @@ static value_t* builtin_equals(evaluation_context_t* ctx, const value_t* const* 
 		return make_integer_value(args[0]->iVal == args[1]->iVal);
 	else return make_value(VALUE_INVALID);
 }
-static value_t* builtin_not(evaluation_context_t* ctx, const value_t* const* args, size_t num) {
+declare(not) {
 	if (num != 1) return make_value(VALUE_INVALID);
 	return make_integer_value(args[0]->type == VALUE_INTEGER ? !args[0]->iVal : 0);
 }
 #define ch2(t, a, b) ((a)->type == (b)->type && (a)->type == (t))
-static value_t* builtin_and(evaluation_context_t* ctx, const value_t* const* args, size_t num) {
+declare(and) {
 	if (num != 2) return make_value(VALUE_INVALID);
 	else return make_integer_value(ch2(VALUE_INTEGER, args[0], args[1]) ? (args[0]->iVal && args[1]->iVal) : 0);
 }
-static value_t* builtin_or(evaluation_context_t* ctx, const value_t* const* args, size_t num) {
+declare(or) {
 	if (num != 2) return make_value(VALUE_INVALID);
 	else return make_integer_value(ch2(VALUE_INTEGER, args[0], args[1]) ? (args[0]->iVal || args[1]->iVal) : 0);
 }
-static value_t* builtin_print(evaluation_context_t* ctx, const value_t* const* args, size_t num) {
+declare(print) {
 	for (size_t i = 0; i < num; ++i) {
 		print_value(args[i], stdout);
 	}
 	putchar('\n');
 	return make_value(VALUE_EMPTY);
 }
-static value_t* builtin_unset(evaluation_context_t* ctx, const value_t* const* args, size_t num) {
-	for (size_t i = 0; i < num; ++i) {
-		if (args[i]->type == VALUE_STRING) {
-			evaluation_context_unset(ctx, args[i]->str);
-		}
-	}
-	return make_value(VALUE_EMPTY);
-}
-static value_t* builtin_append(evaluation_context_t* ctx, const value_t* const* args, size_t num) {
+declare(append) {
 	if (num == 0) return make_value(VALUE_EMPTY);
 	else if (args[0]->type != VALUE_ARRAY) return make_value(VALUE_INVALID);
 	value_t* array = copy_value(args[0]);
@@ -128,7 +123,7 @@ static value_t* builtin_append(evaluation_context_t* ctx, const value_t* const* 
 		buf_push(array->values, copy_value(args[i]));
 	return array;
 }
-static value_t* builtin_list_vars(evaluation_context_t* ctx, const value_t* const* args, size_t num) {
+declare(list_vars) {
 	const size_t len = buf_len(ctx->vars);
 	value_t* array = make_array_value(len);
 	for (size_t i = 0; i < len; ++i) {
@@ -138,6 +133,56 @@ static value_t* builtin_list_vars(evaluation_context_t* ctx, const value_t* cons
 		buf_push(array->values, val);
 	}
 	return array;
+}
+declare(length) {
+	size_t result = 0;
+	for (size_t i = 0; i < num; ++i) {
+		switch (args[i]->type) {
+		case VALUE_INTEGER:
+		case VALUE_FLOAT:
+			++result;
+			break;
+		case VALUE_STRING:
+			result += strlen(args[i]->str);
+			break;
+		case VALUE_ARRAY:
+			result += buf_len(args[i]->values);
+			break;
+		default: break;
+		}
+	}
+	return make_integer_value(result);
+}
+declare(float) {
+	if (num != 1) return make_value(VALUE_INVALID);
+	switch (args[0]->type) {
+	case VALUE_EMPTY:   return make_float_value(0.0);
+	case VALUE_INTEGER: return make_float_value((tkfloat_t)args[0]->iVal);
+	case VALUE_FLOAT:   return copy_value(args[0]);
+	case VALUE_STRING:  return make_float_value(atof(args[0]->str));
+	default:            return make_value(VALUE_INVALID);
+	}
+}
+declare(integer) {
+	if (num != 1) return make_value(VALUE_INVALID);
+	switch (args[0]->type) {
+	case VALUE_EMPTY:   return make_integer_value(0);
+	case VALUE_INTEGER: return copy_value(args[0]);
+	case VALUE_FLOAT:   return make_integer_value((tkint_t)args[0]->fVal);
+	case VALUE_STRING:  return make_integer_value((tkint_t)atoll(args[0]->str));
+	default:            return make_value(VALUE_INVALID);
+	}
+}
+declare(string) {
+	if (num != 1) return make_value(VALUE_INVALID);
+	switch (args[0]->type) {
+	case VALUE_STRING:  return copy_value(args[0]);
+	case VALUE_EMPTY:   return make_string_value("");
+	case VALUE_INVALID: return make_string_value("(invalid)");
+	case VALUE_INTEGER: return make_string_value(parse_int(args[0]->iVal));
+	case VALUE_FLOAT:   return make_string_value(parse_float(args[0]->fVal));
+	default:            return make_value(VALUE_INVALID);
+	}
 }
 
 
@@ -155,10 +200,13 @@ void evaluation_context_add_builtins(evaluation_context_t* ctx) {
 	add_builtin(and);
 	add_builtin(or);
 	add_builtin(print);
-	add_builtin(unset);
 	add_builtin(append);
 	add_builtin(list_vars);
 	add_builtin(invalid);
 	add_builtin(empty);
 	add_builtin(sqrt);
+	add_builtin(length);
+	add_builtin(float);
+	add_builtin(integer);
+	add_builtin(string);
 }
