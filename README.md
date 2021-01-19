@@ -3,6 +3,7 @@ A simple command line calculator
 
 # Dependencies
 - GNU Readline
+- getopt.h
 
 # How to install
 Windows: <br>
@@ -37,8 +38,9 @@ Compile with CMake
 - func name(param1, param2)="definition"
 
 # TODO
+- Implement file execution
+- Add useful command-line options
 - Add Documentation/Wiki
 - Find and fix bugs
 - Add more functions
 - Add complex statements (like if, for)
-
