@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include "cmdcalc.h"
 #include "evaluater.h"
 #include "token.h"
 #include "buf.h"
@@ -185,6 +186,11 @@ declare(string) {
 	}
 }
 
+declare(help) {
+	print_help();
+	return make_value(VALUE_EMPTY);
+}
+
 
 #define add_builtin(name) evaluation_context_add_func(ctx, #name, builtin_##name)
 void evaluation_context_add_builtins(evaluation_context_t* ctx) {
@@ -197,6 +203,7 @@ void evaluation_context_add_builtins(evaluation_context_t* ctx) {
 	add_builtin(exit);
 	add_builtin(typestr);
 	add_builtin(equals);
+	add_builtin(not);
 	add_builtin(and);
 	add_builtin(or);
 	add_builtin(print);
@@ -209,4 +216,5 @@ void evaluation_context_add_builtins(evaluation_context_t* ctx) {
 	add_builtin(float);
 	add_builtin(integer);
 	add_builtin(string);
+	add_builtin(help);
 }
