@@ -8,6 +8,9 @@ A simple command line calculator
 Windows: <br>
 Compile with Visual Studio
 
+Arch Linux/Manjaro: <br>
+Install ```cmdcalc``` with package manager<br>
+
 Linux: <br>
 Compile with CMake
 
