@@ -1,0 +1,295 @@
+.TH cmdcalc 1 "2021-03-10" "2.3"
+
+.SH NAME
+cmdcalc - a command-line calculater
+.SH SYNOPSIS
+.B cmdcalc\fR --help
+.RE
+.B cmdcalc\fR --version
+.SH DESCRIPTION
+.B cmdcalc
+is a simple command-line calculator.
+.RE
+It supports variables, functions and arrays.
+
+.SH DATA TYPES
+.B
+integer
+.RE
+.RS 3
+An
+.B
+integral
+number.
+.RE
+
+.B
+string
+.RE
+.RS 3
+A
+.B
+character literal.
+.RE
+
+.B
+float
+.RE
+.RS 3
+A
+.B
+real
+number.
+.RE
+
+.B
+empty
+.RE
+.RS 3
+A
+.B
+placeholder
+value.
+.RE
+
+.B
+invalid
+.RE
+.RS 3
+A value indicating that an
+.B
+error
+occured.
+.RE
+
+.SH EXAMPLES
+(3 + 2)
+.RE
+.RS 3
+A simple expression.
+.RE
+
+x = 42
+.RE
+.RS 3
+Assign the value
+.B
+42
+to the variable
+.B
+x.
+.RE
+
+.B
+func
+f(x, y) = x * y
+.RE
+.RS 3
+Define a function
+.B
+f
+that calculates the product of
+.B
+x
+and
+.B
+y.
+.RE
+
+x = 
+.B
+append\fR([3, 2], 1)
+.RE
+.RS 3
+Append the integer
+.B
+1
+to the array
+.B
+[3, 2]
+and assign the result to
+.B
+x.
+.RE
+
+.B
+funcs
+.RE
+.RS 3
+Print out all the defined functions.
+.RE
+
+.B
+vars
+.RE
+.RS 3
+Print out all the defined variables.
+.RE
+
+.SH BUILTIN FUNCTIONS
+.B
+exit(code)
+.RE
+.RS 3
+Exit the program with an optional
+.B
+exit code.
+.RE
+
+.B
+append(a, ...)
+.RE
+.RS 3
+.B
+Concatenate
+data to an
+.B
+array
+and return the result.
+.RE
+
+.B
+equals(x, y)
+.RE
+.RS 3
+Test if the two arguments are
+.B
+equal.
+.RE
+
+.B
+integer(x)
+.RE
+.B
+float(x)
+.RE
+.B
+string(x)
+.RE
+.RS 3
+Type conversion functions.
+.RE
+
+.B
+empty()
+.RE
+.B
+invalid()
+.RE
+.RS 3
+Generating the
+.B
+empty
+and
+.B
+invalid
+values respectively.
+.RE
+
+.B
+length(x)
+.RE
+.RS 3
+Getting the 
+.B
+length
+of an
+.B
+array
+or
+.B string.
+.RE
+
+.B
+and(x, y)
+.RE
+.B
+or(x, y)
+.RE
+.B
+not(x)
+.RE
+.RS 3
+Perform
+.B
+bitwise
+AND, OR and NOT operation on given arguments.
+.RE
+
+.B
+sqrt(x)
+.RE
+.RS 3
+Calculating the
+.B
+square root
+of the given argument.
+.RE
+
+.B
+sin(x)
+.RE
+.B
+cos(x)
+.RE
+.B
+tan(x)
+.RE
+.RS 3
+Trigonometric functions.
+.RE
+
+.B
+log(x)
+.RE
+.B
+log10(x)
+.RE
+.B
+log2(x)
+.RE
+.RS 3
+Logarithmic functions.
+.RE
+
+.B
+typestr(x)
+.RE
+.RS 3
+Getting the
+.B
+type
+of
+.B
+x.
+.RE
+
+.B
+print(...)
+.RE
+.RS 3
+Printing values to the screen
+.RE
+
+.B
+help()
+.RE
+.RS 3
+Printing a simple
+.B
+help
+message to the screen.
+
+.SH AUTHOR
+Written by Benjamin Stürz <benni@stuerz.xyz>
+.RE
+
+.SH REPORTING BUGS
+GitHub page: <https://github.com/Benni3D/cmdcalc>
+
+.SH SEE ALSO
+.B
+bc
+(1)
+
+

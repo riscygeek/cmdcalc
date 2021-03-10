@@ -125,6 +125,7 @@ static Token lexer_impl(void) {
 		case '=':   return (Token){ TK_EQUALS, {start, start} };
 		case '?':   return (Token){ TK_QMARK, {start, start} };
 		case ':':   return (Token){ TK_COLON, {start, start} };
+		case ';':   return (Token){ TK_SEMICOLON, {start, start} };
 		case '\0':  return (Token){ TK_EOF, {start, start} };
 		default:
 			error((tokenpos_t){start, start}, "illegal input '%c'", ch);

@@ -25,7 +25,7 @@ struct cmdline_args parse_args(int argc, char* argv[]) {
 				args.filename = optarg;
 				break;
 			case 1: // version
-				printf("cmdcald v%s by Benjamin Stürz\n", CMDCALC_VERSION);
+				printf("cmdcacc v%s by BenjamincStürz\n", CMDCALC_VERSION);
 				puts("GitHub: https://github.com/Benni3D/cmdcalc");
 				args.exitcode = 0;
 				return args;
@@ -73,7 +73,7 @@ struct cmdline_args parse_args(int argc, char* argv[]) {
 
 void print_help(void) {
 	// TODO: Implement Help Page
-	printf("cmdcalc v%s by Benjamin Stürz\n", CMDCALC_VERSION);
+	printf("cmdcalc %s by Benjamin Stürz\n", CMDCALC_VERSION);
 	puts("GitHub: https://github.com/Benni3D/cmdcalc");
 	puts("List all functions: funcs");
 	puts("List all variables: vars");

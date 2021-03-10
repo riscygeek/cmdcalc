@@ -16,6 +16,7 @@ enum ExpressionType {
 	EXPR_CONDITIONAL,
 	EXPR_AT,
 	EXPR_ARRAY,
+	EXPR_FUNCTION,
 };
 
 typedef struct Expression {
@@ -54,6 +55,11 @@ typedef struct Expression {
 			struct Expression* base;
 			struct Expression* index;
 		} at;
+		struct {
+			const char* name;
+			const char** paramnames;
+			struct Expression* expr;
+		} func;
 	};
 } Expression;
 

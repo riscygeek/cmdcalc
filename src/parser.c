@@ -324,6 +324,19 @@ void print_expr(const Expression* expr, FILE* file) {
 		print_expr(expr->at.index, file);
 		fputc(']', file);
 		break;
+	case EXPR_FUNCTION:
+		fputs(expr->func.name, file);
+		fputc('(', file);
+		if (buf_len(expr->func.paramnames)) {
+			fputs(expr->func.paramnames[0], file);
+			for (size_t i = 1; i < buf_len(expr->func.paramnames); ++i) {
+				fprintf(file, ", %s", expr->func.paramnames[i]);
+			}
+		}
+		fputs(") = ", file);
+		print_expr(expr->func.expr, file);
+		fputc(';', file);
+		break;
 	}
 }
 
@@ -356,6 +369,10 @@ void free_expr(Expression* expr) {
 	case EXPR_AT:
 		free_expr(expr->at.base);
 		free_expr(expr->at.index);
+		break;
+	case EXPR_FUNCTION:
+		buf_free(expr->func.paramnames);
+		free_expr(expr->func.expr);
 		break;
 	default: break;
 	}
