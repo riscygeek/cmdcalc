@@ -4,7 +4,7 @@
 #include <ctype.h>
 #include "buf.h"
 
-#define CMDCALC_VERSION "2.3"
+#define CMDCALC_VERSION "2.4"
 
 struct cmdline_args {
 	const char* filename;

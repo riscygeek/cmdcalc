@@ -8,37 +8,29 @@
 
 #define declare(name) static value_t* builtin_##name(evaluation_context_t* ctx, const value_t* const* args, size_t num)
 
-declare(sin) {
-	if (num < 1) return make_value(VALUE_INVALID);
-	value_t* val = value_cast(args[0], VALUE_FLOAT);
-	return val->type == VALUE_INVALID ? val : make_float_value_from(val, sin(val->fVal));
-}
-declare(cos) {
-	if (num < 1) return make_value(VALUE_INVALID);
-	value_t* val = value_cast(args[0], VALUE_FLOAT);
-	return val->type == VALUE_INVALID ? val : make_float_value_from(val, cos(val->fVal));
-}
-declare(tan) {
-	if (num < 1) return make_value(VALUE_INVALID);
-	value_t* val = value_cast(args[0], VALUE_FLOAT);
-	return val->type == VALUE_INVALID ? val : make_float_value_from(val, tan(val->fVal));
+#define declare_math(name) \
+declare(name) { \
+   if (num < 1) return make_value(VALUE_INVALID); \
+   value_t* val = value_cast(args[0], VALUE_FLOAT); \
+   return val->type == VALUE_INVALID ? val : make_float_value_from(val, name(val->fVal)); \
 }
 
-declare(log) {
-	if (num < 1) return make_value(VALUE_INVALID);
-	value_t* val = value_cast(args[0], VALUE_FLOAT);
-	return val->type == VALUE_INVALID ? val : make_float_value_from(val, log(val->fVal));
-}
-declare(log10) {
-	if (num < 1) return make_value(VALUE_INVALID);
-	value_t* val = value_cast(args[0], VALUE_FLOAT);
-	return val->type == VALUE_INVALID ? val : make_float_value_from(val, log10(val->fVal));
-}
-declare(log2) {
-	if (num < 1) return make_value(VALUE_INVALID);
-	value_t* val = value_cast(args[0], VALUE_FLOAT);
-	return val->type == VALUE_INVALID ? val : make_float_value_from(val, log2(val->fVal));
-}
+
+declare_math(sin);
+declare_math(cos);
+declare_math(tan);
+declare_math(asin);
+declare_math(acos);
+declare_math(atan);
+declare_math(sinh);
+declare_math(cosh);
+declare_math(tanh);
+declare_math(asinh);
+declare_math(acosh);
+declare_math(atanh);
+declare_math(log);
+declare_math(log2);
+declare_math(log10);
 
 declare(exit) {
 	int ec = 0;
@@ -194,12 +186,36 @@ declare(help) {
 
 #define add_builtin(name) evaluation_context_add_func(ctx, #name, builtin_##name)
 void evaluation_context_add_builtins(evaluation_context_t* ctx) {
+   // Trigonometric functions
 	add_builtin(sin);
 	add_builtin(cos);
 	add_builtin(tan);
+	add_builtin(asin);
+	add_builtin(acos);
+	add_builtin(atan);
+	add_builtin(sinh);
+	add_builtin(cosh);
+	add_builtin(tanh);
+	add_builtin(asinh);
+	add_builtin(acosh);
+	add_builtin(atanh);
+
+   // Logs
 	add_builtin(log);
 	add_builtin(log10);
 	add_builtin(log2);
+
+   // Other Maths functions
+	add_builtin(sqrt);
+
+   // Conversion functions
+	add_builtin(invalid);
+	add_builtin(empty);
+	add_builtin(length);
+	add_builtin(float);
+	add_builtin(integer);
+	add_builtin(string);
+
 	add_builtin(exit);
 	add_builtin(typestr);
 	add_builtin(equals);
@@ -209,12 +225,5 @@ void evaluation_context_add_builtins(evaluation_context_t* ctx) {
 	add_builtin(print);
 	add_builtin(append);
 	add_builtin(list_vars);
-	add_builtin(invalid);
-	add_builtin(empty);
-	add_builtin(sqrt);
-	add_builtin(length);
-	add_builtin(float);
-	add_builtin(integer);
-	add_builtin(string);
 	add_builtin(help);
 }
